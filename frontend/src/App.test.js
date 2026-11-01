@@ -9,7 +9,7 @@ jest.mock('axios');
 describe('App Component', () => {
   test('renders header', () => {
     render(<App />);
-    const header = screen.getByText(/Effective Dollop/i);
+    const header = screen.getByText(/Emotion Sense/i);
     expect(header).toBeInTheDocument();
   });
 

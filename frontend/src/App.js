@@ -120,8 +120,8 @@ function App() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h1>🤖 Effective Dollop</h1>
-          <p>Advanced AI Sentiment Analysis Platform</p>
+          <h1>🤖 Emotion Sense</h1>
+          <p>Every prediction shows its reasons</p>
         </motion.header>
 
         <div className="main-content">

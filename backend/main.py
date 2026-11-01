@@ -1,14 +1,14 @@
 """
-Effective Dollop - Main Application
+Emotion Sense - Main Application
 FastAPI backend for sentiment analysis
 """
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Optional, Dict
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import uvicorn
 
@@ -16,8 +16,8 @@ from ml.model import SentimentModel
 from core.config import settings
 
 app = FastAPI(
-    title="Effective Dollop API",
-    description="AI-powered sentiment analysis platform",
+    title="Emotion Sense API",
+    description="Explainable emotion scoring API - every prediction lists the words behind it",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
@@ -41,18 +41,19 @@ analysis_history: List[Dict] = []
 
 # Request/Response Models
 class AnalyzeRequest(BaseModel):
-    text: str = Field(..., min_length=1, max_length=5000, description="Text to analyze")
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "text": "I absolutely love this product! It's amazing!"
-            }
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {"text": "I absolutely love this product! It's amazing!"}
         }
+    )
+
+    text: str = Field(..., min_length=1, max_length=5000, description="Text to analyze")
 
 
 class BatchAnalyzeRequest(BaseModel):
-    texts: List[str] = Field(..., min_items=1, max_items=100, description="List of texts to analyze")
+    texts: List[str] = Field(
+        ..., min_length=1, max_length=100, description="List of texts to analyze"
+    )
 
 
 class EmotionScores(BaseModel):
@@ -71,6 +72,8 @@ class AnalysisResult(BaseModel):
     confidence: float
     scores: EmotionScores
     timestamp: str
+    signals: List[Dict] = Field(default_factory=list)
+    engine: str = "lexicon"
 
 
 class AnalyzeResponse(BaseModel):
@@ -95,7 +98,7 @@ class HealthResponse(BaseModel):
 async def root():
     """Root endpoint with API information."""
     return {
-        "name": "Effective Dollop API",
+        "name": "Emotion Sense API",
         "version": "1.0.0",
         "docs": "/docs"
     }
@@ -129,11 +132,13 @@ async def analyze_text(request: AnalyzeRequest):
             emotion=result["emotion"],
             confidence=result["confidence"],
             scores=EmotionScores(**result["scores"]),
-            timestamp=datetime.utcnow().isoformat() + "Z"
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            signals=result.get("signals", []),
+            engine=result.get("engine", "lexicon"),
         )
         
         # Save to history
-        analysis_history.append(analysis.dict())
+        analysis_history.append(analysis.model_dump())
         
         return AnalyzeResponse(status="success", data=analysis)
         
@@ -161,11 +166,13 @@ async def analyze_batch(request: BatchAnalyzeRequest):
                 emotion=result["emotion"],
                 confidence=result["confidence"],
                 scores=EmotionScores(**result["scores"]),
-                timestamp=datetime.utcnow().isoformat() + "Z"
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                signals=result.get("signals", []),
+                engine=result.get("engine", "lexicon"),
             )
             
             results.append(analysis)
-            analysis_history.append(analysis.dict())
+            analysis_history.append(analysis.model_dump())
             
             # Count emotions for summary
             emotion_counts[result["emotion"]] = emotion_counts.get(result["emotion"], 0) + 1

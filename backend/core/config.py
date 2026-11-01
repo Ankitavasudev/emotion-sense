@@ -10,7 +10,7 @@ class Settings:
     """Application settings."""
     
     # Application
-    APP_NAME: str = "Effective Dollop"
+    APP_NAME: str = "Emotion Sense"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     

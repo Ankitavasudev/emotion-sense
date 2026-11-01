@@ -1,5 +1,5 @@
 """
-Simple tests for Effective Dollop API
+API tests for Emotion Sense
 """
 
 import pytest
@@ -20,7 +20,7 @@ def test_root():
     response = client.get("/")
     assert response.status_code == 200
     data = response.json()
-    assert data["name"] == "Effective Dollop API"
+    assert data["name"] == "Emotion Sense API"
 
 
 def test_health():
