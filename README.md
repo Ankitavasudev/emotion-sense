@@ -6,11 +6,13 @@
 
 <br />
 
+<a href="https://ankitavasudev.github.io/emotion-sense/"><img src="https://img.shields.io/badge/%E2%96%B6%20TRY%20IT-00ADB5?style=for-the-badge&logoColor=white" alt="Live demo" /></a>
+&nbsp;
 <img src="https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" />
 <img src="https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white" />
 <img src="https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB" />
 <img src="https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white" />
-<img src="https://img.shields.io/badge/tests-19%20passing-3FB950?style=flat-square" />
+<img src="https://img.shields.io/badge/tests-25%20passing-3FB950?style=flat-square" />
 
 </div>
 
@@ -35,6 +37,13 @@ $ curl -s -X POST localhost:8000/api/v1/analyze \
 ```
 
 Note what happened: `happy` was detected, `not` inverted it, and the response says so. That is the whole point.
+
+## Try it without installing anything
+
+The [browser demo](https://ankitavasudev.github.io/emotion-sense/) runs
+`backend/ml/model.py` unmodified through [Pyodide](https://pyodide.org/), so the
+page scores text with the same Python code as the API. Nothing is uploaded. The
+first load downloads the Python runtime (a few MB) and is cached afterwards.
 
 ## Honest accuracy
 
@@ -71,9 +80,10 @@ An optional scikit-learn pipeline at `backend/models/sentiment_model.pkl` takes 
 | :-- | :-- |
 | API | FastAPI + Pydantic v2 |
 | Engine | Pure Python (stdlib only) |
-| Dashboard | React + Chart.js + Framer Motion |
+| Dashboard | React + Chart.js + Framer Motion, with the signal list shown under every result |
 | Packaging | Docker + docker-compose |
-| CI | GitHub Actions (imports the app, runs the suite) |
+| CI | GitHub Actions: `pytest`, the frontend component tests and a production build |
+| Demo | GitHub Pages, running the Python engine in the browser via Pyodide |
 
 ## Quick start
 
@@ -110,10 +120,18 @@ Interactive docs are generated at `/docs`.
 
 ```bash
 cd backend
-pytest -q          # 19 tests
+pytest -q                         # 19 backend tests
+
+cd ../frontend
+npm test -- --watchAll=false      # 6 component tests
 ```
 
-The suite covers the bugs this rewrite was written to kill: substring false positives, negation, clause-scoped negation, intensifier ordering, probability normalisation, explainability, and an accuracy floor so the engine cannot silently regress.
+The backend suite covers the bugs this rewrite was written to kill: substring
+false positives, negation, clause-scoped negation, intensifier ordering,
+probability normalisation, explainability, and an accuracy floor so the engine
+cannot silently regress. The component tests check that the signal list is
+rendered and that clicking an example analyses that example rather than the
+previous contents of the box.
 
 ## Known limitations
 

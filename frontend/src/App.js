@@ -59,8 +59,9 @@ function App() {
     }
   };
 
-  const analyzeText = async () => {
-    if (!text.trim()) {
+  const analyzeText = async (input = text) => {
+    const value = String(input ?? '').trim();
+    if (!value) {
       toast.warning('Please enter some text to analyze');
       return;
     }
@@ -68,7 +69,7 @@ function App() {
     setLoading(true);
     try {
       const response = await axios.post(`${API_URL}/api/v1/analyze`, {
-        text: text.trim()
+        text: value
       });
 
       setResult(response.data.data);
@@ -83,9 +84,11 @@ function App() {
     }
   };
 
+  // Pass the text in directly: setText is async, so calling analyzeText() here
+  // would post the previous value of the box (or an empty string).
   const analyzeExample = (exampleText) => {
     setText(exampleText);
-    analyzeText();
+    analyzeText(exampleText);
   };
 
   const getChartData = () => {
@@ -215,6 +218,39 @@ function App() {
                     </div>
                   ))}
                 </div>
+
+                <div className="signals-section">
+                  <h3>🔎 Why this result</h3>
+                  {result.signals && result.signals.length > 0 ? (
+                    <ul className="signals-list">
+                      {result.signals.map((signal, index) => (
+                        <li key={`${signal.token}-${index}`} className="signal-item">
+                          <code className="signal-token">{signal.token}</code>
+                          <span className="signal-arrow">→</span>
+                          <span
+                            className="signal-emotion"
+                            style={{ color: EMOTION_CONFIG[signal.emotion]?.color }}
+                          >
+                            {EMOTION_CONFIG[signal.emotion]?.label || signal.emotion}
+                          </span>
+                          {signal.negated && (
+                            <span className="signal-negated">
+                              negated from {EMOTION_CONFIG[signal.source_emotion]?.label || signal.source_emotion}
+                            </span>
+                          )}
+                          <span className="signal-weight">{Number(signal.weight).toFixed(2)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="signals-empty">
+                      No lexicon match, so the engine returns neutral with full probability.
+                    </p>
+                  )}
+                  <p className="signals-engine">
+                    Scored by the {result.engine === 'sklearn' ? 'scikit-learn' : 'lexicon'} engine.
+                  </p>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -227,6 +263,12 @@ function App() {
             animate={{ opacity: 1, y: 0 }}
           >
             <h2>📜 Recent History</h2>
+            {stats && stats.total_analyses > 0 && (
+              <p className="history-stats">
+                {stats.total_analyses} analyses this session · average confidence{' '}
+                {(stats.avg_confidence * 100).toFixed(1)}%
+              </p>
+            )}
             <div className="history-list">
               {history.map((item, index) => (
                 <div key={index} className="history-item">
@@ -247,7 +289,7 @@ function App() {
 
         <footer className="footer">
           <p>Made with ❤️ by Ankita Salaria</p>
-          <p className="tech-stack">FastAPI • React • TensorFlow</p>
+          <p className="tech-stack">FastAPI • React • Chart.js</p>
         </footer>
       </div>
     </div>

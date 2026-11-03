@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Emotion Sense — explainable emotion scoring</title>
+<meta name="description" content="Type a sentence and see the exact words that produced the emotion score. Runs the real Python engine in your browser through Pyodide." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>" />
+<style>
+  :root {
+    --bg: #0b0f14;
+    --panel: #121b23;
+    --card: #16232d;
+    --line: #23343f;
+    --text: #eaf1f8;
+    --muted: #8ba3b5;
+    --accent: #00adb5;
+    --happy: #4caf50;
+    --sad: #2196f3;
+    --angry: #f44336;
+    --fear: #9c27b0;
+    --surprise: #ff9800;
+    --neutral: #78909c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(1200px 600px at 50% -10%, #123039 0%, var(--bg) 55%);
+    color: var(--text);
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+  }
+  main { max-width: 920px; margin: 0 auto; padding: 48px 20px 72px; }
+  header { text-align: center; margin-bottom: 30px; }
+  h1 { font-size: 30px; margin: 0 0 8px; letter-spacing: -0.02em; }
+  h1 span { color: var(--accent); }
+  .tagline { color: var(--muted); margin: 0; font-size: 15px; }
+  .engine-state {
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-top: 14px; font-size: 12px; color: var(--muted);
+    border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px;
+    background: rgba(18, 27, 35, 0.7);
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: #d29922; }
+  .engine-state.ready .dot { background: #3fb950; }
+  .engine-state.error .dot { background: #f85149; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; padding: 18px; margin-bottom: 16px;
+  }
+  textarea {
+    width: 100%; min-height: 96px; resize: vertical;
+    background: var(--bg); color: var(--text);
+    border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 14px; font: inherit; outline: none;
+  }
+  textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0, 173, 181, 0.15); }
+  .actions { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+  button {
+    font: inherit; cursor: pointer; border-radius: 9px;
+    border: 1px solid var(--line); background: var(--card); color: var(--text);
+    padding: 9px 15px; transition: border-color .15s, background .15s, transform .1s;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent); background: #1b2b36; }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary {
+    background: var(--accent); border-color: var(--accent);
+    color: #04191b; font-weight: 700;
+  }
+  button.primary:hover:not(:disabled) { background: #14c2ca; }
+  .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .examples .label { width: 100%; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+  .chip { font-size: 13px; padding: 6px 11px; border-radius: 999px; color: var(--muted); }
+  .chip:hover:not(:disabled) { color: var(--text); }
+  .result { display: none; }
+  .result.show { display: block; animation: rise .25s ease-out; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .verdict { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+  .verdict .emoji { font-size: 42px; line-height: 1; }
+  .verdict .name { font-size: 22px; font-weight: 700; text-transform: capitalize; }
+  .verdict .confidence { color: var(--muted); font-size: 14px; }
+  .bars { display: grid; gap: 8px; margin-bottom: 20px; }
+  .bar-row { display: grid; grid-template-columns: 104px 1fr 52px; gap: 10px; align-items: center; font-size: 13px; }
+  .bar-label { color: var(--muted); text-transform: capitalize; }
+  .bar-track { height: 8px; border-radius: 999px; background: #0b141a; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 999px; transition: width .35s ease; }
+  .bar-value { text-align: right; font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--muted); }
+  h2 { font-size: 14px; margin: 0 0 4px; }
+  .hint { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+  .signals { display: flex; flex-direction: column; gap: 8px; }
+  .signal {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 9px; padding: 9px 12px; font-size: 14px;
+  }
+  .signal code {
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    background: #0b141a; border: 1px solid var(--line);
+    border-radius: 5px; padding: 2px 8px; font-size: 13px;
+  }
+  .signal .arrow { color: var(--muted); }
+  .signal .emotion { font-weight: 700; text-transform: capitalize; }
+  .signal .negated {
+    font-size: 11px; color: var(--muted);
+    border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px;
+  }
+  .signal .weight { margin-left: auto; color: var(--muted); font-size: 12px; font-family: ui-monospace, Consolas, monospace; }
+  .empty { color: var(--muted); font-size: 14px; }
+  .error-box { border-color: #6b2b2b; background: #1d1416; }
+  .error-box code { color: #ffb3ad; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 30px; }
+  footer a { color: var(--accent); text-decoration: none; }
+  @media (max-width: 560px) {
+    main { padding-top: 32px; }
+    .bar-row { grid-template-columns: 78px 1fr 46px; }
+    .signal .weight { margin-left: 0; width: 100%; text-align: right; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Emotion <span>Sense</span></h1>
+    <p class="tagline">Every prediction lists the exact words that produced it.</p>
+    <div class="engine-state" id="engineState"><span class="dot"></span><span id="engineText">loading the Python engine…</span></div>
+  </header>
+
+  <section class="panel">
+    <label for="text" class="hint">Text to score</label>
+    <textarea id="text" spellcheck="false" placeholder="I am not happy with this result">I am not happy with this result</textarea>
+    <div class="actions">
+      <button class="primary" id="analyze" disabled>Analyze</button>
+      <button id="clear" type="button">Clear</button>
+    </div>
+    <div class="examples" id="examples">
+      <span class="label">Try one</span>
+    </div>
+  </section>
+
+  <section class="panel result" id="result" aria-live="polite">
+    <div class="verdict">
+      <span class="emoji" id="emoji"></span>
+      <div>
+        <div class="name" id="emotion"></div>
+        <div class="confidence" id="confidence"></div>
+      </div>
+    </div>
+    <div class="bars" id="bars"></div>
+    <h2>Why this result</h2>
+    <p class="hint">Each row is a token from your text, the emotion it supports, and the weight it contributed.</p>
+    <div class="signals" id="signals"></div>
+  </section>
+
+  <section class="panel error-box" id="errorBox" style="display:none">
+    <h2>The browser runtime did not load</h2>
+    <p class="hint" id="errorText"></p>
+    <p class="hint">
+      The API still runs locally: <code>cd backend &amp;&amp; pip install -r requirements.txt &amp;&amp; uvicorn main:app --reload</code>.
+      The engine itself is dependency-free Python in <code>backend/ml/model.py</code>.
+    </p>
+  </section>
+
+  <footer>
+    Runs <code>backend/ml/model.py</code> unmodified in your browser via
+    <a href="https://pyodide.org/">Pyodide</a>. Nothing is uploaded.
+  </footer>
+</main>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js"></script>
+<script>
+(() => {
+  "use strict";
+
+  const EMOTIONS = [
+    ["happy", "😊", "#4caf50"],
+    ["sad", "😢", "#2196f3"],
+    ["angry", "😠", "#f44336"],
+    ["fear", "😨", "#9c27b0"],
+    ["surprise", "😲", "#ff9800"],
+    ["neutral", "😐", "#78909c"],
+  ];
+  const COLORS = Object.fromEntries(EMOTIONS.map(([key, , color]) => [key, color]));
+  const EMOJIS = Object.fromEntries(EMOTIONS.map(([key, emoji]) => [key, emoji]));
+
+  const EXAMPLES = [
+    "I absolutely love this product, it is amazing",
+    "I am not happy with this result",
+    "I am not angry, just disappointed",
+    "The exam tomorrow makes me nervous",
+    "Great, another outage on a Friday night",
+    "The meeting is at 3 pm in room four",
+  ];
+
+  const textEl = document.getElementById("text");
+  const analyzeBtn = document.getElementById("analyze");
+  const clearBtn = document.getElementById("clear");
+  const resultEl = document.getElementById("result");
+  const errorBox = document.getElementById("errorBox");
+  const errorText = document.getElementById("errorText");
+  const engineState = document.getElementById("engineState");
+  const engineText = document.getElementById("engineText");
+  const examplesEl = document.getElementById("examples");
+
+  let analyzeJson = null;
+
+  function setEngine(state, message) {
+    engineState.className = "engine-state " + state;
+    engineText.textContent = message;
+  }
+
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  function render(result) {
+    document.getElementById("emoji").textContent = EMOJIS[result.emotion] || "❓";
+    document.getElementById("emotion").textContent = result.emotion;
+    document.getElementById("confidence").textContent =
+      (result.confidence * 100).toFixed(1) + "% confidence";
+
+    const bars = document.getElementById("bars");
+    bars.replaceChildren();
+    for (const [key] of EMOTIONS) {
+      const score = Number(result.scores[key] || 0);
+      const row = el("div", "bar-row");
+      row.append(el("span", "bar-label", key));
+      const track = el("div", "bar-track");
+      const fill = el("div", "bar-fill");
+      fill.style.width = (score * 100).toFixed(1) + "%";
+      fill.style.background = COLORS[key];
+      track.append(fill);
+      row.append(track, el("span", "bar-value", (score * 100).toFixed(1) + "%"));
+      bars.append(row);
+    }
+
+    const signals = document.getElementById("signals");
+    signals.replaceChildren();
+    if (!result.signals || result.signals.length === 0) {
+      signals.append(el("p", "empty", "No lexicon match, so the engine returns neutral with full probability."));
+    } else {
+      for (const signal of result.signals) {
+        const row = el("div", "signal");
+        row.append(el("code", null, signal.token));
+        row.append(el("span", "arrow", "→"));
+        const emotion = el("span", "emotion", signal.emotion);
+        emotion.style.color = COLORS[signal.emotion];
+        row.append(emotion);
+        if (signal.negated) {
+          row.append(el("span", "negated", "negated from " + signal.source_emotion));
+        }
+        row.append(el("span", "weight", Number(signal.weight).toFixed(2)));
+        signals.append(row);
+      }
+    }
+
+    resultEl.classList.add("show");
+  }
+
+  function run() {
+    if (!analyzeJson) return;
+    const text = textEl.value.trim();
+    if (!text) {
+      textEl.focus();
+      return;
+    }
+    try {
+      render(JSON.parse(analyzeJson(text)));
+    } catch (error) {
+      setEngine("error", "scoring failed: " + error.message);
+    }
+  }
+
+  for (const example of EXAMPLES) {
+    const chip = el("button", "chip", example.length > 42 ? example.slice(0, 42) + "…" : example);
+    chip.type = "button";
+    chip.addEventListener("click", () => {
+      textEl.value = example;
+      run();
+    });
+    examplesEl.append(chip);
+  }
+
+  analyzeBtn.addEventListener("click", run);
+  clearBtn.addEventListener("click", () => {
+    textEl.value = "";
+    resultEl.classList.remove("show");
+    textEl.focus();
+  });
+  textEl.addEventListener("keydown", (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") run();
+  });
+
+  async function boot() {
+    try {
+      const pyodide = await loadPyodide({
+        indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/",
+      });
+      const response = await fetch("model.py", { cache: "no-cache" });
+      if (!response.ok) throw new Error("model.py returned HTTP " + response.status);
+      const source = await response.text();
+      pyodide.FS.writeFile("/home/pyodide/emotion_model.py", source);
+
+      await pyodide.runPythonAsync(`
+import sys, json
+sys.path.insert(0, "/home/pyodide")
+import emotion_model
+
+_model = emotion_model.SentimentModel(model_path="__missing__")
+
+def analyze_json(text):
+    return json.dumps(_model.analyze(text))
+`);
+      analyzeJson = pyodide.globals.get("analyze_json");
+      setEngine("ready", "engine ready — running the real Python code locally");
+      analyzeBtn.disabled = false;
+      run();
+    } catch (error) {
+      setEngine("error", "could not start the Python runtime");
+      errorText.textContent = String(error && error.message ? error.message : error);
+      errorBox.style.display = "block";
+    }
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>

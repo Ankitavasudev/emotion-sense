@@ -315,6 +315,85 @@ textarea:focus {
   opacity: 0.7;
 }
 
+.history-stats {
+  font-size: 13px;
+  opacity: 0.75;
+  margin: -4px 0 12px;
+}
+
+/* Explainability */
+.signals-section {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.signals-section h3 {
+  font-size: 1.05rem;
+  margin-bottom: 10px;
+}
+
+.signals-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.signal-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.signal-token {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 13px;
+}
+
+.signal-arrow {
+  opacity: 0.6;
+}
+
+.signal-emotion {
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.signal-negated {
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 999px;
+  padding: 2px 8px;
+  opacity: 0.85;
+}
+
+.signal-weight {
+  margin-left: auto;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.signals-empty {
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+.signals-engine {
+  margin-top: 10px;
+  font-size: 12px;
+  opacity: 0.65;
+}
+
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(20px); }
